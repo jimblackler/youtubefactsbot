@@ -8,25 +8,28 @@ import dateutil.parser
 from isodate import parse_duration
 import MySQLdb
 from praw.helpers import comment_stream
-from praw.errors import APIException
+from praw.errors import APIException, OAuthInvalidToken
 from requests import ConnectionError, HTTPError
 
 from praw_auth import auth
 from youtube import YouTubeInfo
 
-user_blacklist = set(line.strip() for line in open("data/user_blacklist.txt"))
+user_blacklist = set(line.strip().lower() for line in open("data/user_blacklist.txt"))
+subreddit_blacklist = set(line.strip().lower() for line in open("data/subreddit_blacklist.txt"))
 subreddit_whitelist = set(line.strip() for line in open("data/subreddit_whitelist.txt"))
 
 youtube = YouTubeInfo()
 db = MySQLdb.connect(user="root", db="reddit_bot")
 cursor = db.cursor()
 
-pattern = re.compile("https://www\.youtube\.com/watch\?v=([0-9A-Za-z\-]*)")
+pattern = re.compile("https://www\.youtube\.com/watch\?v=([0-9A-Za-z\-_]*)")
 
 r = praw.Reddit('youtubefactsbot')
 
-auth(r, ['identity', 'submit'])
+def reauth():
+  auth(r, ['identity', 'submit'])
 
+reauth()
 user = r.get_me()
 print user.name
 
@@ -36,6 +39,13 @@ def handle_comments(comments):
     print comment.id
     if comment.author is None:
       continue
+
+    subreddit = comment.subreddit.display_name
+
+    # Policy : bot doesn't post in blacklisted subreddits.
+    if subreddit.lower() in subreddit_blacklist:
+      continue
+
     # Policy : bot doesn't reply to itself
     if comment.author.name == user.name:
       continue
@@ -45,7 +55,7 @@ def handle_comments(comments):
       continue
 
     # Policy : bot doesn't reply to users in the blacklist
-    if comment.author.name in user_blacklist:
+    if comment.author.name.lower() in user_blacklist:
       continue
 
     # Policy : bot doesn't reply to users with the word 'bot' in their name
@@ -53,7 +63,7 @@ def handle_comments(comments):
       continue
 
     # Policy : only very short comments are replied to
-    if len(comment.body) > 56:
+    if len(comment.body) > 54:
       continue
 
     # Any links to extract?
@@ -69,8 +79,6 @@ def handle_comments(comments):
     result = cursor.fetchone()
     if result is not None:
       continue
-
-    subreddit = comment.subreddit
 
     reply = ""
 
@@ -90,8 +98,11 @@ def handle_comments(comments):
                       str(duration.seconds % 60).zfill(2)
       reply += ">[**" + snippet['title']
       reply += " [" + nice_duration + "]**](" + video_url + ")\n\n"
-      if False:  # Policy; the bot is not currently adding the description.
+      lines = snippet['description'].splitlines()
+      if False:  # Policy; the bot is not currently adding the full description.
         reply += ">>" + snippet['description'].replace("\n", "\n\n>>") + "\n\n"
+      elif len(lines) > 0 and "http" not in lines[0] and lines[0] != snippet['title']:  # But it is adding the first line only if it doesn't contain links.
+        reply += ">>" + lines[0] + "\n\n"
       reply += ">*^{:,}".format(
         int(statistics['viewCount'])) + " ^views ^since "
       reply += datetime.strftime('^%b ^%Y') + "*"
@@ -108,8 +119,13 @@ def handle_comments(comments):
     reply += "(http://www.reddit.com/r/youtubefactsbot/wiki/index)"
 
     try:
-      print "POSTING"
-      comment.reply(reply)
+      print "POSTING in " + subreddit
+      try:
+        comment.reply(reply)
+      except OAuthInvalidToken as e:
+        print e
+        reauth()
+        comment.reply(reply)
       cursor.execute(
         "INSERT INTO replied (id, subreddit, time) VALUES (%s, %s, NOW())",
         [comment.id, subreddit])
@@ -134,10 +150,11 @@ else:
   while True:
     print "Main loop begins"
     try:
-      #comments = comment_stream(r, "+".join(subreddit_whitelist))
-      comments = comment_stream(r, "random")
+
+      comments = comment_stream(r, "all")
+      #comments = comment_stream(r, "test")
       handle_comments(comments)
-    except ConnectionError as e:
+    except EnvironmentError as e:
       print e
 
 cursor.close()

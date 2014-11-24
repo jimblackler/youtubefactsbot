@@ -18,13 +18,13 @@ class YouTubeInfo(object):
   @staticmethod
   def get_authenticated_service():
     scope = "https://www.googleapis.com/auth/youtube.readonly"
-    flow = flow_from_clientsecrets("secrets/google_client_secrets.json",
-                                   scope=scope)
 
     storage = Storage("tokens/google.json")
     credentials = storage.get()
 
     if credentials is None or credentials.invalid:
+      flow = flow_from_clientsecrets("secrets/google_client_secrets.json",
+                                     scope=scope)
       credentials = run(flow, storage)
 
     return build("youtube", "v3", http=credentials.authorize(httplib2.Http()))
