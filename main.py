@@ -9,7 +9,6 @@ from isodate import parse_duration
 import MySQLdb
 from praw.helpers import comment_stream
 from praw.errors import APIException, OAuthInvalidToken
-from requests import ConnectionError, HTTPError
 
 from praw_auth import auth
 from youtube import YouTubeInfo
