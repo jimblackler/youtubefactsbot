@@ -18,8 +18,14 @@ subreddit_blacklist = set(line.strip().lower() for line in open("data/subreddit_
 subreddit_whitelist = set(line.strip() for line in open("data/subreddit_whitelist.txt"))
 
 youtube = YouTubeInfo()
-db = MySQLdb.connect(user="root", db="reddit_bot")
-cursor = db.cursor()
+
+if False:
+  db = MySQLdb.connect(user="root", db="reddit_bot")
+  cursor = db.cursor()
+else:
+  db = None
+  cursor = None
+
 
 pattern = re.compile("https://www\.youtube\.com/watch\?v=([0-9A-Za-z\-_]*)")
 
@@ -74,10 +80,11 @@ def handle_comments(comments):
     if len(comment.replies) > 0:
       continue
 
-    cursor.execute("SELECT time FROM replied WHERE id = %s", [comment.id])
-    result = cursor.fetchone()
-    if result is not None:
-      continue
+    if cursor:
+      cursor.execute("SELECT time FROM replied WHERE id = %s", [comment.id])
+      result = cursor.fetchone()
+      if result is not None:
+        continue
 
     reply = ""
 
@@ -125,17 +132,20 @@ def handle_comments(comments):
         print e
         reauth()
         comment.reply(reply)
-      cursor.execute(
-        "INSERT INTO replied (id, subreddit, time) VALUES (%s, %s, NOW())",
-        [comment.id, subreddit])
-      db.commit()
+      if cursor:
+        cursor.execute(
+          "INSERT INTO replied (id, subreddit, time) VALUES (%s, %s, NOW())",
+          [comment.id, subreddit])
+
     except APIException as e:
       print e
-      cursor.execute(
-        "INSERT INTO errors (exception, target_id, subreddit, activity, time) VALUES (%s, %s, %s, %s, NOW())",
-        [str(e), comment.id, subreddit, "Adding comment"])
-      db.commit()
+      if cursor:
+        cursor.execute(
+          "INSERT INTO errors (exception, target_id, subreddit, activity, time) VALUES (%s, %s, %s, %s, NOW())",
+          [str(e), comment.id, subreddit, "Adding comment"])
 
+    if db:
+      db.commit()
 
 if False:
   for subreddit in subreddit_whitelist:
@@ -156,5 +166,6 @@ else:
     except EnvironmentError as e:
       print e
 
-cursor.close()
-db.close()
+if db:
+  cursor.close()
+  db.close()
