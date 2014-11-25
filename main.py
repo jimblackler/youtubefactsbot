@@ -86,6 +86,15 @@ def handle_comments(comments):
       if result is not None:
         continue
 
+    # Policy : bot only comments once in any thread.
+    flat_comments = praw.helpers.flatten_tree(comment.submission.comments)
+    bot_comments = sum(1 if hasattr(reply, 'author') and
+                            reply.author is not None and
+                            reply.author.name == user.name else 0
+                       for reply in flat_comments)
+    if bot_comments > 0:
+      continue
+
     reply = ""
 
     number_usable = 0
