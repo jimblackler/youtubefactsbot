@@ -107,7 +107,13 @@ def handle_comments(comments):
       lines = snippet['description'].splitlines()
       if False:  # Policy; the bot is not currently adding the full description.
         reply += ">>" + snippet['description'].replace("\n", "\n\n>>") + "\n\n"
-      elif len(lines) > 0 and "http" not in lines[0] and lines[0] != snippet['title']:  # But it is adding the first line only if it doesn't contain links.
+      # Don't want the bot to inadvertently spam links. Also, linky comments
+      # tend to be promotional rather than informative. If the description is
+      # the same as the video title don't include it as we'd repeat ourselves.
+      elif len(lines) > 0\
+          and "http" not in lines[0]\
+          and "www." not in lines[0]\
+          and lines[0] != snippet['title']:
         reply += ">>" + lines[0] + "\n\n"
       reply += ">*^{:,}".format(
         int(statistics['viewCount'])) + " ^views ^since "
