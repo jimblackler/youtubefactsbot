@@ -14,7 +14,7 @@ from flask import Flask, request
 app = Flask(__name__)
 
 
-@app.route('/authorize')
+@app.route('/authorize_callback')
 def authorized():
     token = request.args.get('code', '')
     returned_state = request.args.get('state', '')
@@ -51,7 +51,7 @@ def auth(_r, _scope):
   f.close()
 
   r.set_oauth_app_info(info['client_id'], info['client_secret'],
-                    redirect_uri='http://127.0.0.1:' + str(port) + '/authorize')
+                    redirect_uri='http://127.0.0.1:' + str(port) + '/authorize_callback')
 
   try:
     f = open('tokens/reddit.bin', 'rb')
