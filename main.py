@@ -230,7 +230,7 @@ def handle_comments(comments):
     if number_usable == 0:
       continue
 
-    reply += "[^youtubefactsbot]"
+    reply += "[^bot ^info]"
     reply += "(http://www.reddit.com/r/youtubefactsbot/wiki/index)"
 
     try:
