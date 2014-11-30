@@ -57,7 +57,7 @@ print user.name
 
 
 def too_old_time():
-  return datetime.datetime.now() - datetime.timedelta(days=1)
+  return datetime.datetime.now() - datetime.timedelta(hours=1)
 
 
 def now_seconds():
@@ -116,6 +116,9 @@ def handle_comments(comments):
       delete_downvoted_comments()
 
     print comment.name
+
+    if "cmgxc69" in comment.name:
+      pass
 
     if comment.author is None:
       continue
@@ -195,7 +198,7 @@ def handle_comments(comments):
 
     number_usable = 0
     for videoId in ids:
-      info = youtube.info(videoId)
+      info = youtube.info(videoId, "id,snippet,statistics,contentDetails")
       if info is None:
         continue
       snippet = info['snippet']
@@ -218,12 +221,16 @@ def handle_comments(comments):
       elif (len(lines) > 0 and "http" not in lines[0]
             and "www." not in lines[0] and lines[0] != snippet['title']):
         reply += ">>" + lines[0] + "\n\n"
+      if True:
+        reply += "> [*^" + snippet['channelTitle'].replace(" ", " ^")
+        reply += "*](" + channel_url + ")"
+        category_name = youtube.category_name(info['snippet']['categoryId'])
+        if category_name:
+          reply += " ^in ^" + category_name.replace(" ", " ^")
+        reply += "\n\n"
       reply += ">*^{:,}".format(
         int(statistics['viewCount'])) + " ^views ^since "
       reply += published_at.strftime('^%b ^%Y') + "*"
-      if False:  # Not currently linking to the channel
-        reply += " [*^" + snippet['channelTitle'].replace(" ", " ^")
-        reply += "*](" + channel_url + ")"
       reply += "\n\n"
       number_usable += 1
 

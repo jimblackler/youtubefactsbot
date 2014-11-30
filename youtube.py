@@ -29,8 +29,18 @@ class YouTubeInfo(object):
 
     return build("youtube", "v3", http=credentials.authorize(httplib2.Http()))
 
-  def info(self, _id):
-    parts = "id,snippet,statistics,contentDetails"
+  def category_name(self, id):
+    if id in self.categoryNames:
+      return self.categoryNames[id]
+    info = self.youtube.videoCategories().list(part="id,snippet",id=id).execute()
+    try:
+      name = info['items'][0]['snippet']['title']
+      self.categoryNames[id] = name
+      return name
+    except KeyError:
+      return None
+
+  def info(self, _id, parts):
     response = self.youtube.videos().list(part=parts, id=_id).execute()
     # Only one result is expected,
     if len(response['items']) != 1:
@@ -38,4 +48,5 @@ class YouTubeInfo(object):
     return response['items'][0]
 
   def __init__(self):
+    self.categoryNames = {}
     self.youtube = self.get_authenticated_service()
