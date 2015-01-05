@@ -117,9 +117,6 @@ def handle_comments(comments):
 
     print comment.name
 
-    if "cmgxc69" in comment.name:
-      pass
-
     if comment.author is None:
       continue
 
@@ -276,6 +273,8 @@ else:
       #comments = comment_stream(r, "test")
       handle_comments(comments)
     except EnvironmentError as e:
+      print e
+    except OAuthInvalidToken as e:
       print e
 
 if db:
