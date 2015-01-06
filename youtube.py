@@ -5,7 +5,7 @@
 import httplib2
 from googleapiclient.discovery import build
 from oauth2client.file import Storage
-from oauth2client.client import flow_from_clientsecrets
+from oauth2client.client import flow_from_clientsecrets, AccessTokenRefreshError
 from oauth2client.tools import run
 
 
@@ -37,15 +37,18 @@ class YouTubeInfo(object):
       name = info['items'][0]['snippet']['title']
       self.categoryNames[id] = name
       return name
-    except KeyError:
+    except (KeyError, AccessTokenRefreshError):
       return None
 
   def info(self, _id, parts):
-    response = self.youtube.videos().list(part=parts, id=_id).execute()
-    # Only one result is expected,
-    if len(response['items']) != 1:
+    try :
+      response = self.youtube.videos().list(part=parts, id=_id).execute()
+      # Only one result is expected,
+      if len(response['items']) != 1:
+        return None
+      return response['items'][0]
+    except (KeyError, AccessTokenRefreshError):
       return None
-    return response['items'][0]
 
   def __init__(self):
     self.categoryNames = {}
