@@ -42,7 +42,7 @@ else:
 
 log_activity = False
 
-pattern = re.compile("(?:http[s]?://www\.youtube\.com/watch\?v=|http://youtu.be/)([0-9A-Za-z\-_]*)")
+pattern = re.compile("(?:youtube\.com/watch\?v=|youtu.be/)([0-9A-Za-z\-_]*)")
 
 r = praw.Reddit('youtubefactsbot')
 
