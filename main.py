@@ -235,7 +235,7 @@ def handle_comments(comments):
       continue
 
     reply += "[^bot ^info]"
-    reply += "(http://www.reddit.com/r/youtubefactsbot/wiki/index)"
+    reply += "(/r/youtubefactsbot/wiki/index)"
 
     try:
       print "POSTING in " + subreddit
