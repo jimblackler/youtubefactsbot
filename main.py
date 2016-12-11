@@ -10,7 +10,7 @@ import praw
 import dateutil.parser
 from isodate import parse_duration
 from praw.helpers import comment_stream
-from praw.errors import APIException, OAuthInvalidToken
+from praw.errors import APIException, OAuthInvalidToken, PRAWException
 
 from praw_auth import auth
 from youtube import YouTubeInfo
@@ -44,15 +44,16 @@ log_activity = False
 
 pattern = re.compile("(?:youtube\.com/watch\?v=|youtu.be/)([0-9A-Za-z\-_]*)")
 
-r = praw.Reddit('youtubefactsbot')
+r = praw.Reddit('You Tube Fact Service')
 
 
 def reauth():
-  auth(r, ['identity', 'submit', 'edit', 'privatemessages'])
+  auth(r, ['edit', 'history', 'identity', 'privatemessages', 'read', 'submit'])
 
 
 reauth()
 user = r.get_me()
+#user = r.user
 print user.name
 
 
@@ -108,12 +109,12 @@ def handle_comments(comments):
   since_deleting_downvoted = 0
 
   for comment in comments:
-    if now_seconds() - since_replies > 60:
-      since_replies = now_seconds()
+    if now_seconds() - since_replies > 60 * 10:
       look_at_replies()
+      since_replies = now_seconds()
     if now_seconds() - since_deleting_downvoted > 60:
-      since_deleting_downvoted = now_seconds()
       delete_downvoted_comments()
+      since_deleting_downvoted = now_seconds()
 
     print comment.name
 
@@ -146,8 +147,8 @@ def handle_comments(comments):
     if 'bot' in comment.author.name.lower():
       continue
 
-    # Policy : only very short comments are replied to
-    if len(comment.body) > len("relevant! https://www.youtube.com/watch?v=npvcblAGVmU"):
+    # Policy : only very short comments are replied to. Extended July 2015.. and again Dec 2015
+    if len(comment.body) > len("a very relevant video! https://www.youtube.com/watch?v=npvcblAGVmU"):
       continue
 
     # Policy : nothing that looks like a user-supplied link description (hacky)
@@ -174,27 +175,29 @@ def handle_comments(comments):
 
     flat_comments = praw.helpers.flatten_tree(comment.submission.comments)
 
-    # Policy : bot only comments once in any thread.
+    # Policy : bot only comments TWICE in any thread. Increased July 2015
     bot_comments = sum(1 if hasattr(reply, 'author') and
                             reply.author is not None and
                             reply.author.name == user.name else 0
                        for reply in flat_comments)
-    if bot_comments > 0:
+    if bot_comments >= 2:
       continue
 
     # Policy : bot doesn't reply in a thread if *anyone* on the user blacklist
-    # has also commented.
-    blacklisted_replies = sum(1 if hasattr(reply, 'author') and
-                              reply.author is not None and
-                              reply.author.name in user_blacklist else 0
-                         for reply in flat_comments)
-    if blacklisted_replies > 0:
-      continue
+    # has also commented.  Removed July 2015
+    if False:
+      blacklisted_replies = sum(1 if hasattr(reply, 'author') and
+                                reply.author is not None and
+                                reply.author.name in user_blacklist else 0
+                           for reply in flat_comments)
+      if blacklisted_replies > 0:
+        continue
 
     reply = ""
 
     number_usable = 0
     for videoId in ids:
+      print "videoId: " + videoId
       info = youtube.info(videoId, "id,snippet,statistics,contentDetails")
       if info is None:
         continue
@@ -246,6 +249,8 @@ def handle_comments(comments):
           print e
           reauth()
           comment.reply(reply)
+        except PRAWException as e:
+          print e
       if log_activity:
         cursor.execute(
           "INSERT INTO replied (id, subreddit, time) VALUES (%s, %s, NOW())",
